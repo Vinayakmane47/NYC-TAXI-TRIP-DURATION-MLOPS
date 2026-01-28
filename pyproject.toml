@@ -1,0 +1,13 @@
+[project]
+name = "nyc-taxi-trip-duration-mlops"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cookiecutter>=2.6.0",
+    "dagshub>=0.6.5",
+    "dvc>=3.66.1",
+    "mlflow>=3.8.1",
+    "ruff>=0.14.14",
+]
