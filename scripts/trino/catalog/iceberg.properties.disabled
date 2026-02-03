@@ -1,0 +1,3 @@
+connector.name=iceberg
+iceberg.catalog.type=HADOOP
+iceberg.catalog.warehouse=s3a://nyc-taxi-gold/iceberg/

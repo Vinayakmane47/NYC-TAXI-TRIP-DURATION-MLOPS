@@ -1,0 +1,90 @@
+# ============================================================================
+# ICEBERG TABLE CONFIGURATION
+# ============================================================================
+# Configuration for Iceberg table management and conversion
+# ============================================================================
+
+# Root directory for storing all data
+root_dir: "data"
+
+# Iceberg catalog configuration
+catalog:
+  name: "iceberg"
+  type: "hadoop"
+  warehouse: "s3a://nyc-taxi-gold/iceberg/"
+
+# Table configuration
+tables:
+  bronze:
+    table_name: "trips"
+    schema_name: "bronze"
+    location: "s3a://nyc-taxi-bronze/iceberg/bronze/trips/"
+    partition_columns: ["year", "month"]
+    
+  silver:
+    table_name: "trips"
+    schema_name: "silver"
+    location: "s3a://nyc-taxi-silver/iceberg/silver/trips/"
+    partition_columns: ["year", "month"]
+    
+  gold:
+    table_name: "trips"
+    schema_name: "gold"
+    location: "s3a://nyc-taxi-gold/iceberg/gold/trips/"
+    partition_columns: ["year", "month"]
+
+# Conversion settings
+conversion:
+  # Source parquet paths (relative to root_dir or S3)
+  source_paths:
+    bronze: "raw/bronze"
+    silver: "silver"
+    gold: "gold"
+  
+  # Mode: "overwrite" or "append"
+  mode: "append"
+  
+  # Whether to create tables if they don't exist
+  create_if_not_exists: true
+  
+  # Whether to register tables in registry
+  register_tables: true
+
+# Registry configuration
+registry:
+  # Path to registry file (YAML format)
+  file_path: "data/artifacts/iceberg_registry.yaml"
+  # Whether to persist registry to file
+  persist: true
+
+# Spark configuration for Iceberg operations
+spark:
+  app_name: "NYC_Taxi_Iceberg_Conversion"
+  master: "local[*]"
+  config:
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    spark.sql.files.maxPartitionBytes: "134217728"  # 128MB
+    spark.sql.shuffle.partitions: "200"
+    # Memory settings
+    spark.driver.memory: "8g"
+    spark.driver.maxResultSize: "2g"
+    spark.executor.memory: "8g"
+    # Memory fractions
+    spark.memory.fraction: "0.8"
+    spark.memory.storageFraction: "0.3"
+    # Serialization
+    spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+    # Network binding
+    spark.driver.host: "localhost"
+    spark.driver.bindAddress: "127.0.0.1"
+
+# S3/MinIO Configuration
+use_s3: true
+s3:
+  endpoint_url: "http://minio:9000"
+  access_key_id: "minioadmin"
+  secret_access_key: "minioadmin"
+  region: "us-east-1"
+  use_ssl: false
+  path_style_access: true

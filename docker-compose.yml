@@ -43,7 +43,11 @@ services:
         mc mb myminio/nyc-taxi-bronze --ignore-existing || true
         mc mb myminio/nyc-taxi-silver --ignore-existing || true
         mc mb myminio/nyc-taxi-gold --ignore-existing || true
-        echo "✅ All MinIO buckets created successfully!"
+        echo "Creating Iceberg storage directories..."
+        mc mb myminio/nyc-taxi-bronze/iceberg --ignore-existing || true
+        mc mb myminio/nyc-taxi-silver/iceberg --ignore-existing || true
+        mc mb myminio/nyc-taxi-gold/iceberg --ignore-existing || true
+        echo "✅ All MinIO buckets and Iceberg directories created successfully!"
     networks:
       - mlops-network
     restart: "no"
@@ -322,6 +326,7 @@ services:
     networks:
       - mlops-network
     user: "${AIRFLOW_UID:-50000}:0"
+
 
 volumes:
   minio_data:
