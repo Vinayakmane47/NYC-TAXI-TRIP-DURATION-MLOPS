@@ -25,7 +25,14 @@ from airflow.models import Connection
 from airflow import settings
 import logging
 
+# Suppress INFO logs - only show WARNING and above
+logging.getLogger('airflow').setLevel(logging.WARNING)
+logging.getLogger('airflow.task').setLevel(logging.WARNING)
+logging.getLogger('airflow.processor').setLevel(logging.WARNING)
+logging.getLogger('airflow.executors').setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 default_args = {
     'owner': 'mlops-team',
@@ -190,7 +197,7 @@ preprocessing_task = SparkSubmitOperator(
         'spark.cleaner.referenceTracking.cleanCheckpoints': 'true',
         'spark.cleaner.periodicGC.interval': '10min',
         # Shuffle optimization - reduced partitions to save memory
-        'spark.sql.shuffle.partitions': '50',
+        'spark.sql.shuffle.partitions': '8',
         'spark.sql.adaptive.enabled': 'true',
         'spark.sql.adaptive.coalescePartitions.enabled': 'true',
         'spark.sql.adaptive.skewJoin.enabled': 'true',
@@ -239,7 +246,7 @@ transformation_task = SparkSubmitOperator(
         'spark.cleaner.referenceTracking.cleanCheckpoints': 'true',
         'spark.cleaner.periodicGC.interval': '10min',
         # Shuffle optimization - reduced partitions to save memory
-        'spark.sql.shuffle.partitions': '50',
+        'spark.sql.shuffle.partitions': '8',
         'spark.sql.adaptive.enabled': 'true',
         'spark.sql.adaptive.coalescePartitions.enabled': 'true',
         'spark.sql.adaptive.skewJoin.enabled': 'true',

@@ -272,7 +272,7 @@ class DataPreprocessing(BaseDataTransformationStage):
         self.memory_manager.clear_cache()
 
         # Optimize partitions before transformations
-        df = self.memory_manager.repartition_if_needed(df, target_partitions=50)
+        df = self.memory_manager.repartition_if_needed(df, target_partitions=8)
 
         # Apply cleaning pipeline
         cleaned_df = self.cleaning_pipeline.run(df)

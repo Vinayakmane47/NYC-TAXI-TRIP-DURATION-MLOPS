@@ -32,6 +32,8 @@ from src.config import (
     CompletenessRules,
     ConsistencyRules,
     BusinessRules,
+    ParallelProcessingConfig,
+    PerformanceConfig,
 )
 from src.exceptions import ConfigurationError
 
@@ -152,6 +154,26 @@ class ConfigLoader:
 
             s3_config = self._parse_s3_config(config_data)
 
+            # Parse parallel processing config (optional)
+            parallel_config = None
+            if 'parallel_processing' in config_data:
+                pp_data = config_data['parallel_processing']
+                parallel_config = ParallelProcessingConfig(
+                    enabled=pp_data.get('enabled', True),
+                    max_workers=pp_data.get('max_workers', 4),
+                    batch_size=pp_data.get('batch_size', 4)
+                )
+
+            # Parse performance config (optional)
+            performance_config = None
+            if 'performance' in config_data:
+                perf_data = config_data['performance']
+                performance_config = PerformanceConfig(
+                    remove_sleep_delays=perf_data.get('remove_sleep_delays', True),
+                    async_s3_upload=perf_data.get('async_s3_upload', True),
+                    connection_pooling=perf_data.get('connection_pooling', True)
+                )
+
             config = DataIngestionConfig(
                 root_dir=Path(config_data['root_dir']),
                 api_base_url=config_data['api_base_url'],
@@ -166,7 +188,9 @@ class ConfigLoader:
                 min_file_size_mb=config_data['min_file_size_mb'],
                 s3=s3_config,
                 bronze_bucket=config_data.get('bronze_bucket'),
-                use_s3=config_data.get('use_s3', False)
+                use_s3=config_data.get('use_s3', False),
+                parallel_processing=parallel_config,
+                performance=performance_config
             )
 
             self._config_cache['ingestion'] = config

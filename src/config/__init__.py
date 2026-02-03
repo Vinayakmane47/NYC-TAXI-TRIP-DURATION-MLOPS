@@ -22,6 +22,20 @@ class S3Config:
     path_style_access: bool = True
 
 @dataclass
+class ParallelProcessingConfig:
+    """Configuration for parallel data ingestion."""
+    enabled: bool = True
+    max_workers: int = 4
+    batch_size: int = 4
+
+@dataclass
+class PerformanceConfig:
+    """Configuration for performance optimizations."""
+    remove_sleep_delays: bool = True
+    async_s3_upload: bool = True
+    connection_pooling: bool = True
+
+@dataclass
 class DataIngestionConfig:
     root_dir: Path
     api_base_url: str
@@ -38,6 +52,9 @@ class DataIngestionConfig:
     s3: Optional[S3Config] = None
     bronze_bucket: Optional[str] = None
     use_s3: bool = False
+    # Parallel processing configuration (performance optimization)
+    parallel_processing: Optional[ParallelProcessingConfig] = None
+    performance: Optional[PerformanceConfig] = None
 
 ## Create Configs for data preprocessing
 

@@ -360,7 +360,7 @@ class FeatureEngineering(BaseDataTransformationStage):
         self.memory_manager.clear_cache()
 
         # Optimize partitions before heavy transformations
-        df = self.memory_manager.repartition_if_needed(df, target_partitions=50)
+        df = self.memory_manager.repartition_if_needed(df, target_partitions=8)
 
         # Apply feature engineering pipeline
         enriched_df = self.feature_pipeline.run(df)
@@ -369,7 +369,7 @@ class FeatureEngineering(BaseDataTransformationStage):
         self.memory_manager.clear_cache(df)
 
         # Optimize partitions after transformations (may have grown)
-        enriched_df = self.memory_manager.repartition_if_needed(enriched_df, target_partitions=50)
+        enriched_df = self.memory_manager.repartition_if_needed(enriched_df, target_partitions=8)
 
         # Get final column count
         final_cols = len(enriched_df.columns)

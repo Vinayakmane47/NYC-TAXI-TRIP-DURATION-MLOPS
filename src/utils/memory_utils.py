@@ -9,6 +9,7 @@ import logging
 import gc
 from typing import Optional, Dict, Any
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.errors import AnalysisException
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ class MemoryManager:
             target_partitions = self.optimize_partitions(df)
 
         if force or abs(current_partitions - target_partitions) > 5:
-            logger.info(f"Repartitioning: {current_partitions} → {target_partitions}")
+            logger.info(f"Repartitioning: {current_partitions} -> {target_partitions}")
             # Use coalesce if reducing partitions (avoids shuffle)
             if target_partitions < current_partitions:
                 return df.coalesce(target_partitions)
@@ -253,7 +254,7 @@ class MemoryEfficientProcessor:
             original_partitions = self.spark.conf.get("spark.sql.shuffle.partitions")
 
             # Reduce shuffle partitions for small datasets
-            self.spark.conf.set("spark.sql.shuffle.partitions", "50")
+            self.spark.conf.set("spark.sql.shuffle.partitions", "8")
 
             result = df.groupBy(*group_cols).agg(agg_expr)
 
@@ -305,40 +306,62 @@ class MemoryEfficientProcessor:
             yield batch_value, result_df
 
 
+def _safe_set_config(spark: SparkSession, key: str, value: str) -> None:
+    """
+    Safely set Spark config, skipping if it cannot be modified (e.g., set via command line).
+    
+    Args:
+        spark: SparkSession to configure
+        key: Config key
+        value: Config value
+    """
+    try:
+        spark.conf.set(key, value)
+        logger.debug(f"Set {key} = {value}")
+    except AnalysisException as e:
+        # Config cannot be modified (set via command line/DAG), skip it
+        # This is expected for configs set in SparkSubmitOperator
+        logger.debug(f"Skipping {key} (cannot modify: already set via command line/DAG)")
+    except Exception as e:
+        # Other exceptions - log but don't fail
+        logger.debug(f"Could not set {key}: {e}")
+
+
 def configure_memory_optimized_spark(spark: SparkSession) -> None:
     """
     Configure Spark session for memory-optimized processing.
+    Only sets configs that are not already set (e.g., via command line or DAG).
 
     Args:
         spark: SparkSession to configure
     """
     logger.info("Applying memory-optimized Spark configurations...")
 
-    # Memory management
-    spark.conf.set("spark.memory.fraction", "0.6")  # Reduced from 0.7
-    spark.conf.set("spark.memory.storageFraction", "0.3")  # Increased from 0.2
-    spark.conf.set("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
-    spark.conf.set("spark.cleaner.periodicGC.interval", "10min")
+    # Memory management - these may be set in DAG, so use safe set
+    _safe_set_config(spark, "spark.memory.fraction", "0.6")  # Reduced from 0.7
+    _safe_set_config(spark, "spark.memory.storageFraction", "0.3")  # Increased from 0.2
+    _safe_set_config(spark, "spark.cleaner.referenceTracking.cleanCheckpoints", "true")
+    _safe_set_config(spark, "spark.cleaner.periodicGC.interval", "10min")
 
     # Shuffle optimization
-    spark.conf.set("spark.sql.shuffle.partitions", "50")  # Reduced from default 200
-    spark.conf.set("spark.sql.adaptive.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+    _safe_set_config(spark, "spark.sql.shuffle.partitions", "8")  # Reduced to 8 partitions
+    _safe_set_config(spark, "spark.sql.adaptive.enabled", "true")
+    _safe_set_config(spark, "spark.sql.adaptive.coalescePartitions.enabled", "true")
+    _safe_set_config(spark, "spark.sql.adaptive.skewJoin.enabled", "true")
 
     # File size optimization
-    spark.conf.set("spark.sql.files.maxPartitionBytes", "67108864")  # 64MB
+    _safe_set_config(spark, "spark.sql.files.maxPartitionBytes", "67108864")  # 64MB
 
     # Broadcast optimization
-    spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "10485760")  # 10MB
+    _safe_set_config(spark, "spark.sql.autoBroadcastJoinThreshold", "10485760")  # 10MB
 
     # Serialization
-    spark.conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    spark.conf.set("spark.kryoserializer.buffer.max", "512m")
+    _safe_set_config(spark, "spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    _safe_set_config(spark, "spark.kryoserializer.buffer.max", "512m")
 
     # Execution optimization
-    spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "false")  # Can cause OOM
-    spark.conf.set("spark.sql.inMemoryColumnarStorage.compressed", "true")
-    spark.conf.set("spark.sql.inMemoryColumnarStorage.batchSize", "5000")  # Reduced from 10000
+    _safe_set_config(spark, "spark.sql.execution.arrow.pyspark.enabled", "false")  # Can cause OOM
+    _safe_set_config(spark, "spark.sql.inMemoryColumnarStorage.compressed", "true")
+    _safe_set_config(spark, "spark.sql.inMemoryColumnarStorage.batchSize", "5000")  # Reduced from 10000
 
     logger.info("Memory-optimized configurations applied")

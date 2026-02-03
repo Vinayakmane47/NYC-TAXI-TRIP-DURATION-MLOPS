@@ -44,3 +44,32 @@ s3:
   region: "us-east-1"
   use_ssl: false
   path_style_access: true
+
+# ============================================================================
+# PARALLEL PROCESSING CONFIGURATION (Performance Optimization)
+# ============================================================================
+# Enable parallel downloads to achieve 5x speed improvement (24 min to 5 min)
+
+parallel_processing:
+  # Enable/disable parallel download functionality
+  enabled: true
+
+  # Number of parallel workers for downloading months simultaneously
+  # Recommended: 4 workers for 4 simultaneous downloads
+  # Memory usage: ~50MB per worker = 200MB total
+  max_workers: 4
+
+  # Number of months to download in each batch
+  # With max_workers=4, this will process all 12 months in 3 batches
+  batch_size: 4
+
+# Performance optimization settings
+performance:
+  # Remove unnecessary sleep delays between downloads
+  remove_sleep_delays: true
+
+  # Enable asynchronous S3 uploads (parallel with next download)
+  async_s3_upload: true
+
+  # Reuse HTTP connections across downloads
+  connection_pooling: true

@@ -182,6 +182,19 @@ services:
       AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
       AIRFLOW__API__ENABLE_UI: 'true'
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      # Parallelism settings for performance optimization
+      AIRFLOW__CORE__PARALLELISM: '20'
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: '12'
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: '1'
+      AIRFLOW__CELERY__WORKER_CONCURRENCY: '4'
+      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: '30'
+      AIRFLOW__CORE__DAG_FILE_PROCESSOR_TIMEOUT: '120'
+      # Logging settings (suppress verbose logs)
+      AIRFLOW__LOGGING__LOGGING_LEVEL: 'WARNING'
+      AIRFLOW__CORE__LOGGING_LEVEL: 'WARNING'
+      AIRFLOW__FAB_LOGGING_LEVEL: 'WARNING'
+      # Spark connection (standalone cluster)
+      AIRFLOW__CONNECTIONS__SPARK_DEFAULT: 'spark://spark-master:7077'
       # MinIO connection
       AIRFLOW__CONNECTIONS__MINIO_CONN: 's3://minioadmin:minioadmin@minio:9000'
       AWS_ACCESS_KEY_ID: minioadmin
