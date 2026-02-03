@@ -1,0 +1,46 @@
+# ============================================================================
+# PIPELINE STAGE 1: DATA INGESTION
+# ============================================================================
+# Configuration for downloading and organizing raw NYC Yellow Taxi trip data
+# ============================================================================
+
+# Root directory for storing all data
+root_dir: "data"
+
+# NYC TLC Data API Base URL
+# Yellow taxi trip data is available at: https://d37ci6vzurychx.cloudfront.net/trip-data/
+api_base_url: "https://d37ci6vzurychx.cloudfront.net/trip-data"
+
+# Data file naming pattern: yellow_tripdata_YYYY-MM.parquet
+file_name_pattern: "yellow_tripdata_{year}-{month:02d}.parquet"
+
+# Year to download data for
+year: 2025
+
+# Raw/Bronze data directory structure
+raw_bronze_dir: "raw/bronze"
+
+# Download directory (temporary storage before organizing by date)
+download_dir: "downloads"
+
+# Chunk size for downloading large files (in bytes)
+chunk_size: 8192
+
+# Retry configuration
+max_retries: 3
+retry_delay: 5  # seconds
+
+# Data validation
+validate_download: true
+min_file_size_mb: 1  # Minimum expected file size in MB
+
+# S3/MinIO Configuration
+use_s3: true
+bronze_bucket: "nyc-taxi-bronze"
+s3:
+  endpoint_url: "http://minio:9000"
+  access_key_id: "minioadmin"
+  secret_access_key: "minioadmin"
+  region: "us-east-1"
+  use_ssl: false
+  path_style_access: true

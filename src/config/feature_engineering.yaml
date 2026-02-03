@@ -1,0 +1,92 @@
+# ============================================================================
+# PIPELINE STAGE 3B: FEATURE ENGINEERING (Part of Transformation)
+# ============================================================================
+# Configuration for feature engineering on silver layer data to gold layer
+# ============================================================================
+
+# Root directory for storing all data
+root_dir: "data"
+
+# Input data paths
+silver_dir: "silver"
+gold_dir: "gold"
+
+# Output artifact directory
+artifact_dir: "artifacts/feature_engineering"
+
+# Feature engineering settings
+feature_engineering:
+  # Time-based features
+  include_time_features: true
+  include_cyclical_encoding: true
+  
+  # Distance-based features
+  include_distance_features: true
+  
+  # Ratio features
+  include_ratio_features: true
+  
+  # Location features
+  include_location_features: true
+  compute_frequency_features: true
+  
+  # Flag features
+  include_flag_features: true
+
+# Spark configuration
+spark:
+  app_name: "NYC_Taxi_Feature_Engineering"
+  master: "local[*]"
+  config:
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    spark.sql.files.maxPartitionBytes: "134217728"  # 128MB
+    spark.sql.shuffle.partitions: "200"
+    # Memory settings (for local mode, driver and executor share JVM)
+    spark.driver.memory: "8g"
+    spark.driver.maxResultSize: "2g"
+    spark.executor.memory: "8g"
+    # Memory fractions
+    spark.memory.fraction: "0.8"
+    spark.memory.storageFraction: "0.3"
+    # Off-heap memory
+    spark.memory.offHeap.enabled: "true"
+    spark.memory.offHeap.size: "2g"
+    # Shuffle settings
+    spark.shuffle.spill.compress: "true"
+    spark.shuffle.compress: "true"
+    spark.shuffle.spill.numElementsForceSpillThreshold: "1000000"
+    # Serialization
+    spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+    # Garbage collection
+    spark.executor.extraJavaOptions: "-XX:+UseG1GC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps"
+    # Network binding (fix for macOS/local mode)
+    spark.driver.host: "localhost"
+    spark.driver.bindAddress: "127.0.0.1"
+
+# Processing configuration
+processing:
+  year: 2025
+  months: []  # Empty list means process all months
+  repartition: false  # Disable repartition before write to avoid shuffle
+  num_partitions: 200
+  cache_intermediate: false  # Disable caching to save memory
+  write_partitions: 50  # Use coalesce for write (fewer partitions = less shuffle)
+
+# Output format
+output:
+  format: "parquet"
+  compression: "snappy"
+  mode: "overwrite"  # overwrite, append, errorifexists
+
+# S3/MinIO Configuration
+use_s3: true
+silver_bucket: "nyc-taxi-silver"
+gold_bucket: "nyc-taxi-gold"
+s3:
+  endpoint_url: "http://minio:9000"
+  access_key_id: "minioadmin"
+  secret_access_key: "minioadmin"
+  region: "us-east-1"
+  use_ssl: false
+  path_style_access: true

@@ -1,0 +1,98 @@
+# ============================================================================
+# PIPELINE STAGE 2: DATA VALIDATION
+# ============================================================================
+# Configuration for schema and data quality validation
+# ============================================================================
+
+# Validation settings
+validation:
+  # Enable/disable validation steps
+  enable_schema_validation: true
+  enable_data_validation: true
+  fail_on_validation_error: false  # If true, raise exception; if false, log warnings
+  
+  # Missing value thresholds (percentage)
+  missing_value_thresholds:
+    critical_columns: 0.0  # No missing values allowed
+    important_columns: 5.0  # Max 5% missing
+    optional_columns: 50.0  # Max 50% missing
+  
+  # Outlier detection
+  outlier_detection:
+    enabled: true
+    method: "iqr"  # iqr, zscore
+    zscore_threshold: 3.0
+    iqr_multiplier: 1.5
+  
+  # Duplicate detection
+  duplicate_detection:
+    enabled: true
+    max_duplicate_percentage: 1.0  # Max 1% duplicates allowed
+
+# Schema validation rules
+schema_validation:
+  # Strict schema matching
+  strict_mode: true
+  
+  # Allow extra columns (not in schema)
+  allow_extra_columns: false
+  
+  # Allow missing columns (in schema but not in data)
+  allow_missing_columns: false
+  
+  # Column order validation
+  validate_column_order: false
+
+# Data quality rules
+data_quality:
+  # Completeness checks
+  completeness:
+    min_record_count: 1000  # Minimum records expected
+    max_null_percentage: 10.0  # Max 10% nulls overall
+  
+  # Consistency checks
+  consistency:
+    # Temporal consistency
+    check_temporal_consistency: true
+    min_trip_duration_seconds: 10  # Minimum 10 seconds
+    max_trip_duration_hours: 3  # Maximum 3 hours
+    
+    # Derived feature consistency
+    check_derived_features: true
+    cyclical_tolerance: 0.01  # Tolerance for sin² + cos² = 1
+    
+    # Ratio consistency
+    check_ratio_consistency: true
+    ratio_tolerance: 0.05  # 5% tolerance for ratio sums
+  
+  # Business logic validation
+  business_rules:
+    # Fare calculation validation
+    check_fare_calculation: true
+    fare_tolerance: 0.10  # 10% tolerance
+    
+    # Tip validation
+    check_tip_logic: true
+    max_tip_multiplier: 2.0
+    
+    # Distance-duration relationship
+    check_speed_reasonableness: true
+    min_speed_mph: 5.0
+    max_speed_mph: 60.0
+    
+    # Route ID consistency
+    check_route_id_consistency: true
+
+# Validation reporting
+reporting:
+  # Generate validation reports
+  generate_reports: true
+  
+  # Report format
+  report_format: "json"  # json, html, both
+  
+  # Save reports to
+  report_dir: "artifacts/validation_reports"
+  
+  # Log validation results
+  log_to_mlflow: false  # Set to true if MLflow is configured

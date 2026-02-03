@@ -1,0 +1,307 @@
+# ============================================================================
+# SCHEMA DEFINITION (Used by Validation Stage)
+# ============================================================================
+# Defines all expected features, data types, and validation rules
+# Used by the data validation stage for schema validation
+# ============================================================================
+
+features:
+  # Location Features
+  route_id:
+    type: "string"
+    nullable: false
+    description: "Route identifier combining pickup and dropoff locations"
+  
+  DOLocationID:
+    type: "string"
+    nullable: true
+    description: "Dropoff location ID"
+    valid_range: [1, 265]  # NYC taxi zones
+  
+  PULocationID:
+    type: "string"
+    nullable: true
+    description: "Pickup location ID"
+    valid_range: [1, 265]  # NYC taxi zones
+  
+  # Vendor and Basic Info
+  VendorID:
+    type: "integer"
+    nullable: true
+    description: "Vendor identifier"
+    valid_values: [1, 2]
+  
+  tpep_pickup_datetime:
+    type: "timestamp_ntz"
+    nullable: true
+    description: "Pickup timestamp"
+  
+  passenger_count:
+    type: "long"
+    nullable: false
+    description: "Number of passengers"
+    valid_range: [1, 9]
+    default: 1
+  
+  trip_distance:
+    type: "double"
+    nullable: true
+    description: "Trip distance in miles"
+    valid_range: [0.0, 60.0]
+  
+  RatecodeID:
+    type: "long"
+    nullable: false
+    description: "Rate code identifier"
+    valid_range: [1, 6]
+    default: 1
+  
+  store_and_fwd_flag:
+    type: "string"
+    nullable: false
+    description: "Store and forward flag"
+    valid_values: ["Y", "N"]
+    default: "N"
+  
+  payment_type:
+    type: "long"
+    nullable: true
+    description: "Payment type"
+    valid_range: [1, 6]
+  
+  # Monetary Features
+  fare_amount:
+    type: "double"
+    nullable: true
+    description: "Fare amount"
+    valid_range: [0.0, 500.0]
+  
+  extra:
+    type: "double"
+    nullable: true
+    description: "Extra charges"
+    valid_range: [0.0, 100.0]
+  
+  mta_tax:
+    type: "double"
+    nullable: true
+    description: "MTA tax"
+    valid_range: [0.0, 10.0]
+  
+  tip_amount:
+    type: "double"
+    nullable: true
+    description: "Tip amount"
+    valid_range: [0.0, 1000.0]
+  
+  tolls_amount:
+    type: "double"
+    nullable: true
+    description: "Tolls amount"
+    valid_range: [0.0, 100.0]
+  
+  improvement_surcharge:
+    type: "double"
+    nullable: true
+    description: "Improvement surcharge"
+    valid_range: [0.0, 10.0]
+  
+  congestion_surcharge:
+    type: "double"
+    nullable: false
+    description: "Congestion surcharge"
+    valid_range: [0.0, 10.0]
+    default: 0.0
+  
+  Airport_fee:
+    type: "double"
+    nullable: false
+    description: "Airport fee"
+    valid_range: [0.0, 10.0]
+    default: 0.0
+  
+  cbd_congestion_fee:
+    type: "double"
+    nullable: true
+    description: "CBD congestion fee"
+    valid_range: [0.0, 10.0]
+  
+  trip_duration_min:
+    type: "double"
+    nullable: true
+    description: "Trip duration in minutes"
+    valid_range: [0.0, 180.0]
+  
+  # Time Features
+  pickup_hour:
+    type: "integer"
+    nullable: true
+    description: "Hour of pickup"
+    valid_range: [0, 23]
+  
+  pickup_day_of_week:
+    type: "integer"
+    nullable: true
+    description: "Day of week (Monday=0)"
+    valid_range: [0, 6]
+  
+  pickup_day_of_month:
+    type: "integer"
+    nullable: true
+    description: "Day of month"
+    valid_range: [1, 31]
+  
+  pickup_week_of_year:
+    type: "integer"
+    nullable: true
+    description: "Week of year"
+    valid_range: [1, 53]
+  
+  pickup_month:
+    type: "integer"
+    nullable: true
+    description: "Month"
+    valid_range: [1, 12]
+  
+  pickup_year:
+    type: "integer"
+    nullable: true
+    description: "Year"
+    valid_range: [2020, 2030]
+  
+  # Boolean Flags
+  is_weekend:
+    type: "boolean"
+    nullable: true
+    description: "Is weekend flag"
+  
+  is_peak_hour:
+    type: "boolean"
+    nullable: true
+    description: "Is peak hour flag"
+  
+  is_night:
+    type: "boolean"
+    nullable: true
+    description: "Is night flag"
+  
+  is_rush_hour:
+    type: "boolean"
+    nullable: true
+    description: "Is rush hour flag"
+  
+  # Cyclical Encoding
+  sin_hour:
+    type: "double"
+    nullable: true
+    description: "Sine encoding of hour"
+    valid_range: [-1.0, 1.0]
+  
+  cos_hour:
+    type: "double"
+    nullable: true
+    description: "Cosine encoding of hour"
+    valid_range: [-1.0, 1.0]
+  
+  sin_day_of_week:
+    type: "double"
+    nullable: true
+    description: "Sine encoding of day of week"
+    valid_range: [-1.0, 1.0]
+  
+  cos_day_of_week:
+    type: "double"
+    nullable: true
+    description: "Cosine encoding of day of week"
+    valid_range: [-1.0, 1.0]
+  
+  # Distance Features
+  is_short_trip:
+    type: "boolean"
+    nullable: true
+    description: "Is short trip flag (< 1 mile)"
+  
+  is_long_trip:
+    type: "boolean"
+    nullable: true
+    description: "Is long trip flag (> 10 miles)"
+  
+  log_trip_distance:
+    type: "double"
+    nullable: true
+    description: "Log of trip distance"
+    valid_range: [0.0, 5.0]
+  
+  sqrt_trip_distance:
+    type: "double"
+    nullable: true
+    description: "Square root of trip distance"
+    valid_range: [0.0, 10.0]
+  
+  # Ratio Features
+  fare_per_mile:
+    type: "double"
+    nullable: true
+    description: "Fare per mile"
+    valid_range: [0.0, 100.0]
+  
+  surcharge_ratio:
+    type: "double"
+    nullable: true
+    description: "Surcharge ratio"
+    valid_range: [0.0, 1.0]
+  
+  toll_ratio:
+    type: "double"
+    nullable: true
+    description: "Toll ratio"
+    valid_range: [0.0, 1.0]
+  
+  # Flag Features
+  has_tolls:
+    type: "integer"
+    nullable: false
+    description: "Has tolls flag"
+    valid_values: [0, 1]
+  
+  has_airport_fee:
+    type: "integer"
+    nullable: false
+    description: "Has airport fee flag"
+    valid_values: [0, 1]
+  
+  has_congestion_fee:
+    type: "integer"
+    nullable: false
+    description: "Has congestion fee flag"
+    valid_values: [0, 1]
+  
+  non_fare_amount:
+    type: "double"
+    nullable: true
+    description: "Non-fare amount"
+    valid_range: [-100.0, 1000.0]
+  
+  # Location Features
+  is_same_zone:
+    type: "boolean"
+    nullable: true
+    description: "Is same zone flag"
+  
+  pickup_zone_trip_count:
+    type: "long"
+    nullable: true
+    description: "Pickup zone trip count"
+    valid_range: [0, 1000000]
+  
+  dropoff_zone_trip_count:
+    type: "long"
+    nullable: true
+    description: "Dropoff zone trip count"
+    valid_range: [0, 1000000]
+  
+  route_trip_count:
+    type: "long"
+    nullable: true
+    description: "Route trip count"
+    valid_range: [0, 1000000]
