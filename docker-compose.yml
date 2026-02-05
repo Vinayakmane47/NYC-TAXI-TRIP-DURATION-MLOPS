@@ -43,11 +43,7 @@ services:
         mc mb myminio/nyc-taxi-bronze --ignore-existing || true
         mc mb myminio/nyc-taxi-silver --ignore-existing || true
         mc mb myminio/nyc-taxi-gold --ignore-existing || true
-        echo "Creating Iceberg storage directories..."
-        mc mb myminio/nyc-taxi-bronze/iceberg --ignore-existing || true
-        mc mb myminio/nyc-taxi-silver/iceberg --ignore-existing || true
-        mc mb myminio/nyc-taxi-gold/iceberg --ignore-existing || true
-        echo "✅ All MinIO buckets and Iceberg directories created successfully!"
+        echo "All MinIO buckets created successfully!"
     networks:
       - mlops-network
     restart: "no"
@@ -327,6 +323,143 @@ services:
       - mlops-network
     user: "${AIRFLOW_UID:-50000}:0"
 
+  # Spark SQL Thrift Server - Exposes Spark SQL via JDBC for BI tools
+  # NOTE: Currently disabled due to Java 21 compatibility issues with Spark 3.4.1
+  # To enable: 
+  # 1. Modify Dockerfile.spark to use Java 17: change openjdk-21-jre-headless to openjdk-17-jre-headless
+  # 2. Rebuild: docker compose build spark-master spark-worker
+  # 3. Uncomment the service below
+  #
+  # spark-thrift-server:
+  #   image: nyc-taxi-spark:latest
+  #   container_name: spark-thrift-server
+  #   user: root
+  #   depends_on:
+  #     - spark-master
+  #     - minio
+  #   ports:
+  #     - "10000:10000"
+  #   environment:
+  #     - AWS_ACCESS_KEY_ID=minioadmin
+  #     - AWS_SECRET_ACCESS_KEY=minioadmin
+  #     - AWS_ENDPOINT_URL=http://minio:9000
+  #     - SPARK_MASTER=spark://spark-master:7077
+  #   volumes:
+  #     - ./src:/opt/airflow/src
+  #     - ./spark_jobs:/opt/airflow/spark_jobs
+  #     - ./data:/opt/airflow/data
+  #     - ./scripts:/opt/airflow/scripts
+  #   command: >
+  #     bash -c "
+  #     /opt/spark/sbin/start-thriftserver.sh
+  #     --master spark://spark-master:7077
+  #     --conf spark.sql.warehouse.dir=s3a://nyc-taxi-gold/warehouse
+  #     --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000
+  #     --conf spark.hadoop.fs.s3a.access.key=minioadmin
+  #     --conf spark.hadoop.fs.s3a.secret.key=minioadmin
+  #     --conf spark.hadoop.fs.s3a.path.style.access=true
+  #     --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+  #     --hiveconf hive.server2.thrift.port=10000
+  #     --hiveconf hive.server2.thrift.bind.host=0.0.0.0
+  #     --driver-memory 2g
+  #     --executor-memory 2g
+  #     && tail -f /opt/spark/logs/*
+  #     "
+  #   networks:
+  #     - mlops-network
+  #   restart: unless-stopped
+
+  # Superset PostgreSQL Database (separate from Airflow)
+  superset-postgres:
+    image: postgres:15
+    container_name: superset-postgres
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - superset_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Superset Init (runs once to initialize database)
+  superset-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
+    image: nyc-taxi-superset:latest
+    container_name: superset-init
+    depends_on:
+      superset-postgres:
+        condition: service_healthy
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-your-secret-key-change-in-production}
+      SUPERSET_DB_HOST: superset-postgres
+      SUPERSET_DB_PORT: 5432
+      SUPERSET_DB_USER: superset
+      SUPERSET_DB_PASSWORD: superset
+      SUPERSET_DB_NAME: superset
+    volumes:
+      - ./superset/config/superset_config.py:/app/pythonpath/superset_config.py
+      - ./superset/init_superset.sh:/app/init_superset.sh
+      - ./superset/config/superset_home:/app/superset_home
+    command: >
+      bash -c "
+      chmod +x /app/init_superset.sh &&
+      /app/init_superset.sh
+      "
+    networks:
+      - mlops-network
+    restart: "no"
+
+  # Apache Superset - BI Dashboard Tool
+  superset:
+    image: nyc-taxi-superset:latest
+    container_name: superset
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+      superset-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-your-secret-key-change-in-production}
+      SUPERSET_DB_HOST: superset-postgres
+      SUPERSET_DB_PORT: 5432
+      SUPERSET_DB_USER: superset
+      SUPERSET_DB_PASSWORD: superset
+      SUPERSET_DB_NAME: superset
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./superset/config/superset_config.py:/app/pythonpath/superset_config.py
+      - ./superset/config/superset_home:/app/superset_home
+      - ./superset/dashboards:/app/dashboards
+    command: bash -c "superset db upgrade && superset init && gunicorn --bind 0.0.0.0:8088 --workers 4 --timeout 120 --limit-request-line 0 --limit-request-field_size 0 'superset.app:create_app()'"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mlops-network
+    restart: unless-stopped
+
 
 volumes:
   minio_data:
@@ -334,6 +467,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  superset_postgres_data:
     driver: local
 
 networks:

@@ -235,11 +235,11 @@ transformation_task = SparkSubmitOperator(
     conf={
         'spark.master': 'spark://spark-master:7077',
         # Memory settings - conservative to prevent OOM
-        'spark.executor.memory': '2g',
-        'spark.driver.memory': '2g',
-        'spark.driver.maxResultSize': '512m',
+        'spark.executor.memory': '1536m',  # Reduced from 2g
+        'spark.driver.memory': '1536m',    # Reduced from 2g
+        'spark.driver.maxResultSize': '384m',  # Reduced from 512m
         'spark.driver.cores': '1',
-        'spark.executor.memoryOverhead': '512m',  # Extra memory for overhead
+        'spark.executor.memoryOverhead': '384m',  # Reduced from 512m
         # Memory management
         'spark.memory.fraction': '0.6',  # Reduced from 0.7 for stability
         'spark.memory.storageFraction': '0.3',  # Increased for caching
@@ -271,7 +271,7 @@ transformation_task = SparkSubmitOperator(
         'spark.hadoop.fs.s3a.path.style.access': 'true',
         'spark.hadoop.fs.s3a.impl': 'org.apache.hadoop.fs.s3a.S3AFileSystem',
     },
-    application_args=['--year', '2025'],  # Processes all months internally
+    application_args=['--year', '2025', '--months', '1,2,3,4'],  # Only process months with data
     dag=dag,
 )
 

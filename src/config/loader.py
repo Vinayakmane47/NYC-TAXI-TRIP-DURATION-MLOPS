@@ -34,12 +34,6 @@ from src.config import (
     BusinessRules,
     ParallelProcessingConfig,
     PerformanceConfig,
-    IcebergConfig,
-    CatalogConfig,
-    TableConfig,
-    TablesConfig,
-    ConversionConfig,
-    RegistryConfig,
 )
 from src.exceptions import ConfigurationError
 
@@ -434,93 +428,6 @@ class ConfigLoader:
         except Exception as e:
             raise ConfigurationError(f"Failed to load validation config: {e}") from e
 
-    def load_iceberg_config(self) -> IcebergConfig:
-        """
-        Load Iceberg table management configuration.
-
-        Returns:
-            IcebergConfig object
-
-        Raises:
-            ConfigurationError: If configuration is invalid
-        """
-        if 'iceberg' in self._config_cache:
-            return self._config_cache['iceberg']
-
-        try:
-            config_data = self._load_yaml('iceberg.yaml')
-
-            # Parse nested configs
-            s3_config = self._parse_s3_config(config_data)
-            spark_config = self._parse_spark_config(config_data)
-
-            # Parse catalog config
-            catalog_data = config_data['catalog']
-            catalog_config = CatalogConfig(
-                name=catalog_data['name'],
-                type=catalog_data['type'],
-                warehouse=catalog_data['warehouse']
-            )
-
-            # Parse tables config
-            tables_data = config_data['tables']
-            tables_config = TablesConfig(
-                bronze=TableConfig(
-                    table_name=tables_data['bronze']['table_name'],
-                    schema_name=tables_data['bronze']['schema_name'],
-                    location=tables_data['bronze']['location'],
-                    partition_columns=tables_data['bronze']['partition_columns']
-                ),
-                silver=TableConfig(
-                    table_name=tables_data['silver']['table_name'],
-                    schema_name=tables_data['silver']['schema_name'],
-                    location=tables_data['silver']['location'],
-                    partition_columns=tables_data['silver']['partition_columns']
-                ),
-                gold=TableConfig(
-                    table_name=tables_data['gold']['table_name'],
-                    schema_name=tables_data['gold']['schema_name'],
-                    location=tables_data['gold']['location'],
-                    partition_columns=tables_data['gold']['partition_columns']
-                )
-            )
-
-            # Parse conversion config
-            conversion_data = config_data['conversion']
-            conversion_config = ConversionConfig(
-                source_paths=conversion_data['source_paths'],
-                mode=conversion_data['mode'],
-                create_if_not_exists=conversion_data['create_if_not_exists'],
-                register_tables=conversion_data['register_tables']
-            )
-
-            # Parse registry config
-            registry_data = config_data['registry']
-            registry_config = RegistryConfig(
-                file_path=Path(registry_data['file_path']),
-                persist=registry_data['persist']
-            )
-
-            config = IcebergConfig(
-                root_dir=Path(config_data['root_dir']),
-                catalog=catalog_config,
-                tables=tables_config,
-                conversion=conversion_config,
-                registry=registry_config,
-                spark=spark_config,
-                s3=s3_config,
-                use_s3=config_data.get('use_s3', False)
-            )
-
-            self._config_cache['iceberg'] = config
-            logger.info("Iceberg configuration loaded successfully")
-            return config
-
-        except KeyError as e:
-            raise ConfigurationError(f"Missing required key in iceberg config: {e}") from e
-        except Exception as e:
-            raise ConfigurationError(f"Failed to load iceberg config: {e}") from e
-
     def clear_cache(self) -> None:
         """Clear the configuration cache."""
         self._config_cache.clear()
@@ -551,11 +458,6 @@ def load_feature_engineering_config() -> FeatureEngineeringConfig:
 def load_validation_config() -> DataValidationConfig:
     """Load data validation configuration."""
     return _config_loader.load_validation_config()
-
-
-def load_iceberg_config() -> IcebergConfig:
-    """Load Iceberg table management configuration."""
-    return _config_loader.load_iceberg_config()
 
 
 def clear_config_cache() -> None:

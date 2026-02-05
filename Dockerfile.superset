@@ -1,0 +1,9 @@
+FROM apache/superset:latest
+
+USER root
+
+# Install psycopg2-binary into the venv for PostgreSQL support
+RUN /app/.venv/bin/python3 -m ensurepip && \
+    /app/.venv/bin/python3 -m pip install --no-cache-dir psycopg2-binary
+
+USER superset

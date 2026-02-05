@@ -90,9 +90,20 @@ That's it! This single command:
 - Username: `admin`
 - Password: `admin`
 
-**MinIO UI**: http://localhost:9000 (optional)
+**Apache Superset (BI Dashboards)**: http://localhost:8088
+- Username: `admin`
+- Password: `admin`
+- See [Business Intelligence](#business-intelligence) section below
+
+**MinIO Console**: http://localhost:9001
 - Username: `minioadmin`
 - Password: `minioadmin`
+
+**Spark Master UI**: http://localhost:8081
+- Monitor Spark jobs and cluster status
+
+**Spark Worker UI**: http://localhost:8082
+- Monitor Spark worker nodes
 
 ### Run the ETL Pipeline
 
@@ -108,6 +119,174 @@ Watch it run! The pipeline will:
 ```bash
 docker compose down
 ```
+
+---
+
+## Business Intelligence with Apache Superset
+
+This project includes Apache Superset for creating interactive dashboards and analytics on your NYC taxi trip data.
+
+### Accessing Superset
+
+1. **Start all services** (if not already running):
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Access Superset UI**: http://localhost:8088
+   - Username: `admin`
+   - Password: `admin`
+
+### Setting Up Data Source Connection
+
+1. **Login to Superset** at http://localhost:8088
+
+2. **Add Database Connection**:
+   - Go to **Settings** → **Database Connections** → **+ Database**
+   - Select **Spark SQL** as the database type
+   - **Connection String**: `hive://spark-thrift-server:10000/nyc_taxi`
+   - **Display Name**: `NYC Taxi Data`
+   - Click **Test Connection** to verify
+   - Click **Connect**
+
+### Creating Tables in Spark SQL
+
+Before querying data, you need to create the SQL tables. Run the initialization script:
+
+```bash
+# Execute inside the spark-thrift-server container
+docker exec -it spark-thrift-server bash /opt/airflow/scripts/init_spark_tables.sh
+```
+
+Or manually via Spark SQL:
+```bash
+docker exec -it spark-thrift-server spark-sql \
+  --master spark://spark-master:7077 \
+  -f /opt/airflow/spark_jobs/create_tables.sql
+```
+
+### Available Tables
+
+After initialization, you'll have access to three tables:
+
+1. **`bronze_trips`** - Raw data from NYC TLC
+   - Location: `s3a://nyc-taxi-bronze/raw/bronze/`
+   - Partitioned by: `year`, `month`
+
+2. **`silver_trips`** - Cleaned and validated data
+   - Location: `s3a://nyc-taxi-silver/silver/`
+   - Partitioned by: `year`, `month`
+   - Includes: `trip_duration_min`, `route_id`
+
+3. **`gold_trips`** - Feature-engineered data ready for ML
+   - Location: `s3a://nyc-taxi-gold/gold/`
+   - Partitioned by: `year`, `month`
+   - Includes: Time features, cyclical encodings, distance features, ratios, location features
+
+### Sample Queries for Dashboards
+
+#### 1. Trip Volume by Hour
+```sql
+SELECT 
+    pickup_hour,
+    COUNT(*) as trip_count
+FROM gold_trips
+WHERE year = 2025
+GROUP BY pickup_hour
+ORDER BY pickup_hour;
+```
+
+#### 2. Average Trip Duration by Day of Week
+```sql
+SELECT 
+    pickup_day_of_week,
+    AVG(trip_duration_min) as avg_duration_min,
+    COUNT(*) as trip_count
+FROM gold_trips
+WHERE year = 2025
+GROUP BY pickup_day_of_week
+ORDER BY pickup_day_of_week;
+```
+
+#### 3. Revenue Analysis by Month
+```sql
+SELECT 
+    pickup_month,
+    SUM(total_amount) as total_revenue,
+    AVG(total_amount) as avg_fare,
+    COUNT(*) as trip_count
+FROM gold_trips
+WHERE year = 2025
+GROUP BY pickup_month
+ORDER BY pickup_month;
+```
+
+#### 4. Distance vs Duration Correlation
+```sql
+SELECT 
+    CASE 
+        WHEN trip_distance < 1 THEN 'Short (<1mi)'
+        WHEN trip_distance < 5 THEN 'Medium (1-5mi)'
+        WHEN trip_distance < 10 THEN 'Long (5-10mi)'
+        ELSE 'Very Long (>10mi)'
+    END as distance_category,
+    AVG(trip_duration_min) as avg_duration,
+    AVG(trip_distance) as avg_distance,
+    COUNT(*) as trip_count
+FROM gold_trips
+WHERE year = 2025
+GROUP BY distance_category;
+```
+
+#### 5. Popular Pickup Locations
+```sql
+SELECT 
+    PULocationID,
+    COUNT(*) as pickup_count,
+    AVG(trip_duration_min) as avg_duration
+FROM gold_trips
+WHERE year = 2025
+GROUP BY PULocationID
+ORDER BY pickup_count DESC
+LIMIT 20;
+```
+
+### Creating Your First Dashboard
+
+1. **Create a Chart**:
+   - Go to **Charts** → **+ Chart**
+   - Select your database connection
+   - Choose a table (e.g., `gold_trips`)
+   - Select chart type (e.g., Bar Chart, Line Chart, Table)
+   - Write your SQL query
+   - Click **Run** to preview
+   - Click **Save** to save the chart
+
+2. **Create a Dashboard**:
+   - Go to **Dashboards** → **+ Dashboard**
+   - Name your dashboard (e.g., "NYC Taxi Analytics")
+   - Click **Save**
+   - Click **Edit Dashboard**
+   - Add your saved charts to the dashboard
+   - Arrange and resize charts as needed
+   - Click **Save**
+
+### Troubleshooting Superset
+
+**Connection Issues**:
+- Verify Spark Thrift Server is running: `docker ps | grep spark-thrift-server`
+- Check Thrift Server logs: `docker logs spark-thrift-server`
+- Ensure tables are created (run initialization script)
+
+**Query Performance**:
+- Use partitioned columns (`year`, `month`) in WHERE clauses for faster queries
+- Limit result sets with `LIMIT` clause
+- Consider creating materialized views for frequently accessed aggregations
+
+**Tables Not Visible**:
+- Run the table initialization script
+- Refresh the database connection in Superset
+- Verify data exists in MinIO buckets
 
 ---
 
@@ -197,6 +376,14 @@ docker-compose up -d
 - Feature engineering
 - Data validation
 - Airflow automation
+
+**Complete and Working**:
+- Data ingestion
+- Data cleaning
+- Feature engineering
+- Data validation
+- Airflow automation
+- **Business Intelligence (Superset)** ✨ NEW
 
 **Planned for Later**:
 - Model training
